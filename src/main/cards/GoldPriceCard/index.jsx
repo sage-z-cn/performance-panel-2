@@ -3,11 +3,11 @@ import useIntl from "../../../hooks/useIntl.jsx";
 import {GoldIcon} from "../../../icon/index.jsx";
 import {useRequest} from "ahooks";
 import {getGoldPrice} from "../../../api/index.js";
-import {Tooltip} from "antd";
 
 function GoldPriceCard() {
     const intl = useIntl();
-    const [price, setPrice] = useState({});
+    const [prices, setPrices] = useState([]);
+    const [updateTime, setUpdateTime] = useState('--');
 
     const {data} = useRequest(getGoldPrice, {
         pollingInterval: 60 * 1000,
@@ -15,49 +15,70 @@ function GoldPriceCard() {
     });
 
     useEffect(() => {
-        if (data) {
-            const {status, data: {code, data: {SH = [], UpTime} = {}} = {}} = data;
-            if (status === 200 && code === 200) {
-                if (SH.length > 1) {
-                    const {BP, High, Low, SP} = SH[1];
-                    setPrice({
-                        BP,
-                        SP,
-                        High,
-                        Low,
-                        UpTime,
-                    });
+        if (data && data.status === 200 && data.data) {
+            const rawData = data.data;
+            const result = [];
+            let timeStr = '--';
+
+            const keys = [
+                {key: 'gds_AUTD', name: 'domesticGold'},
+                {key: 'hf_GC', name: 'nyGold'},
+                {key: 'hf_XAU', name: 'londonGold'},
+            ];
+
+            keys.forEach(({key, name}) => {
+                const line = rawData[key];
+                if (line) {
+                    const values = line.split(',');
+                    if (values.length >= 8) {
+                        const current = parseFloat(values[0]);
+                        const yesterday = parseFloat(values[7]);
+
+                        if (!isNaN(current) && !isNaN(yesterday) && yesterday !== 0) {
+                            const change = current - yesterday;
+                            const changePercent = (change / yesterday) * 100;
+
+                            result.push({
+                                label: intl(name),
+                                current: current.toFixed(2),
+                                change: (change >= 0 ? '+' : '') + change.toFixed(2),
+                                changePercent: (change >= 0 ? '+' : '') + changePercent.toFixed(2) + '%',
+                                up: change >= 0
+                            });
+                        }
+
+                        if (key === 'gds_AUTD' && values[12] && values[6]) {
+                            timeStr = `${values[12]} ${values[6]}`;
+                        }
+                    }
                 }
-            }
+            });
+
+            setPrices(result);
+            setUpdateTime(timeStr);
         }
-    }, [data])
+    }, [data, intl]);
 
     return (
         <div className="card card-gold">
             <div className="card-header">
                 <div className="card-icon"><GoldIcon/></div>
                 <div className="card-title">
-                    <Tooltip placement="top" title={`${intl('updateTime')} ${price['UpTime']}`}>
-                        {intl('goldPrice')}
-                    </Tooltip>
+                    {intl('goldPrice')}
                 </div>
             </div>
             <div className="card-body">
+                {prices.map((item, index) => (
+                    <div className="small-item" key={index}>
+                        <span>{item.label}</span>
+                        <span style={{color: item.up ? '#ff4d4f' : '#52c41a'}}>
+                            {item.current} / {item.change} / {item.changePercent}
+                        </span>
+                    </div>
+                ))}
                 <div className="small-item">
-                    <span>{intl('buyPrice')}</span>
-                    <span>{price['BP'] || '--'}</span>
-                </div>
-                <div className="small-item">
-                    <span>{intl('sellPrice')}</span>
-                    <span>{price['SP'] || '--'}</span>
-                </div>
-                <div className="small-item">
-                    <span>{intl('highPrice')}</span>
-                    <span>{price['High'] || '--'}</span>
-                </div>
-                <div className="small-item">
-                    <span>{intl('lowPrice')}</span>
-                    <span>{price['Low'] || '--'}</span>
+                    <span>{intl('updateTime')}</span>
+                    <span>{updateTime}</span>
                 </div>
             </div>
         </div>
