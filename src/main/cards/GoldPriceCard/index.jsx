@@ -94,12 +94,14 @@ function GoldPriceCard() {
                 <div className="card-title">
                     {intl('goldPrice')}
                 </div>
-                <div 
-                    style={{fontSize: '16px', color: '#666', marginLeft: '10px', cursor: 'pointer', userSelect: 'none'}}
-                    onClick={handleToggleDisplay}
-                >
-                    {showConverted ? 'CNY/g' : 'USD/oz'}
-                </div>
+                {exchangeRateData && exchangeRateData.status === 200 && (
+                    <div 
+                        style={{fontSize: '16px', color: '#666', marginLeft: '10px', cursor: 'pointer', userSelect: 'none'}}
+                        onClick={handleToggleDisplay}
+                    >
+                        {showConverted ? 'CNY/g' : 'USD/oz'}
+                    </div>
+                )}
             </div>
             <div className="card-body">
                 {prices.map((item, index) => {
