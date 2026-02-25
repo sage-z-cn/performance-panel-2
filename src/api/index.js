@@ -29,3 +29,17 @@ export const getGoldPrice = () => {
         document.head.appendChild(script);
     });
 }
+
+export const getUSDToCNYRate = async () => {
+    // eslint-disable-next-line no-useless-catch
+    try {
+        const response = await fetch(`https://free.xwteam.cn/api/convert/currency?money=USD`);
+        const data = await response.json();
+        if (data.code === 200 && data.data && data.data.To && data.data.To.CNY) {
+            return { status: 200, data: data.data.To.CNY };
+        }
+        throw new Error(data.msg || '查询汇率失败');
+    } catch (err) {
+        throw err;
+    }
+}
