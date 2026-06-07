@@ -138,6 +138,16 @@ body,
             }
         }
 
+        &.card-gold {
+            .card-body {
+                .small-item {
+                    span:last-child {
+                        font-size: 0.9rem;
+                    }
+                }
+            }
+        }
+
         &.card-chip {
             .card-body {
                 display: flex;

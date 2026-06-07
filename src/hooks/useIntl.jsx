@@ -33,6 +33,9 @@ const translators = {
         sellPrice: 'Sell Price',
         highPrice: 'High Price',
         lowPrice: 'Low Price',
+        domesticGold: 'CN',
+        nyGold: 'NYC',
+        londonGold: 'LON',
     },
     chinese: {
         usage: (<span>AIDA64 LCD Remote Sensor 不可用。
@@ -65,6 +68,9 @@ const translators = {
         sellPrice: '卖出价格',
         highPrice: '最高价',
         lowPrice: '最低价',
+        domesticGold: '国内金',
+        nyGold: '纽约金',
+        londonGold: '伦敦金',
     }
 };
 
