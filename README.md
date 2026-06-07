@@ -2,6 +2,8 @@
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
+> **新版本可用**：使用 [LibreHardwareMonitor](https://github.com/LibreHardwareMonitor/LibreHardwareMonitor) 作为数据来源的新版本已发布，无需额外安装 AIDA64 和 RTSS，安装更方便，数据更稳定。详见新仓库 [performance-panel-2](https://github.com/sage-z-cn/performance-panel-2)。
+
 中文 | [English](./README-EN.md)
 
 此项目为 Wallpaper Engine 的网页壁纸，展示 [AIDA64](https://www.aida64.com/downloads) 和 [Riva Tuner Statistics Server](https://www.guru3d.com/download/rtss-rivatuner-statistics-server-download/) 提供的性能数据，并且可以响应音频，识别当前播放的媒体。
