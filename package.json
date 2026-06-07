@@ -1,12 +1,12 @@
 {
-  "name": "performance-panel",
+  "name": "performance-panel-2",
   "private": true,
   "version": "0.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "deploy": "env-cmd -f .env \"vite build && node deploy.js\"",
+    "deploy": "env-cmd -f .env node deploy.js",
     "lint": "eslint .",
     "preview": "vite preview"
   },
