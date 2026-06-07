@@ -103,7 +103,7 @@
         "step": 0.1,
         "text": "时钟字体大小（Clock Font Size）",
         "type": "slider",
-        "value": 4
+        "value": 6
       },
       "dateSeparator": {
         "index": 8,

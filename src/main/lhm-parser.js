@@ -200,12 +200,59 @@ function aggregateNetwork(sensorMap, nicNames) {
 }
 
 // ============================================================
-// 磁盘数据聚合（立即选中总速度最大的磁盘，但切换后至少保持 3 秒）
+// 磁盘数据聚合（汇总所有磁盘的读写速度，展示全部磁盘的温度和用量）
 // ============================================================
 
-let currentDiskKey = null;
-let lastSwitchTime = 0;
-const MIN_HOLD_MS = 3000;
+/**
+ * 从速度字符串中解析数值和单位
+ * @param {string} valueStr - 如 "52.0 KB/s" 或 "1.2 MB/s"
+ * @returns {{ num: number, unit: string }}
+ */
+function parseSpeedAndUnit(valueStr) {
+  if (!valueStr) return { num: 0, unit: '' };
+  const match = valueStr.match(/^([\d.]+)\s*(KB\/s|MB\/s|B\/s)/i);
+  if (match) {
+    return { num: parseFloat(match[1]) || 0, unit: match[2] };
+  }
+  return { num: parseFloat(valueStr) || 0, unit: '' };
+}
+
+/**
+ * 按单位聚合速度值：同单位则相加，混合则只加 MB/s 值
+ * @param {Array<{ num: number, unit: string }>} values
+ * @returns {string} 聚合后的速度字符串，如 "1.5 MB/s"
+ */
+function aggregateByUnit(values) {
+  if (values.length === 0) return '0 KB/s';
+
+  // 收集所有非空单位
+  const nonEmpty = values.filter(v => v.unit);
+  if (nonEmpty.length === 0) return '0 KB/s';
+
+  // 检查是否所有单位相同
+  const units = new Set(nonEmpty.map(v => v.unit));
+  if (units.size === 1) {
+    // 同单位直接相加
+    const total = nonEmpty.reduce((sum, v) => sum + v.num, 0);
+    return `${+total.toFixed(1)} ${nonEmpty[0].unit}`;
+  }
+
+  // 混合单位：只取 MB/s，舍弃 KB/s
+  const mbValues = nonEmpty.filter(v => v.unit.toLowerCase() === 'mb/s');
+  if (mbValues.length > 0) {
+    const total = mbValues.reduce((sum, v) => sum + v.num, 0);
+    return `${+total.toFixed(1)} MB/s`;
+  }
+
+  // 没有 MB/s 值，回退到 KB/s
+  const kbValues = nonEmpty.filter(v => v.unit.toLowerCase() === 'kb/s');
+  if (kbValues.length > 0) {
+    const total = kbValues.reduce((sum, v) => sum + v.num, 0);
+    return `${+total.toFixed(1)} KB/s`;
+  }
+
+  return '0 KB/s';
+}
 
 /**
  * 从 JSON 树中获取磁盘前缀 → 型号名称 的映射
@@ -251,7 +298,7 @@ function aggregateDisks(sensorMap, jsonData) {
     let diskKey = null;
     for (const prefix of DISK_PREFIXES) {
       if (node.SensorId.startsWith(prefix)) {
-        // 提取 /nvme/2/... → "nvme-2"
+        // 提取 /nvme/2/... → "/nvme/2"
         const rest = node.SensorId.substring(prefix.length);
         const idx = rest.indexOf('/');
         const diskId = idx > 0 ? rest.substring(0, idx) : rest;
@@ -271,35 +318,38 @@ function aggregateDisks(sensorMap, jsonData) {
   for (const diskKey of Object.keys(disks)) {
     const data = parseDiskData(disks[diskKey].sensors);
     data.key = diskKey;
-    // 改写 name 为更友好的磁盘名称
     data.name = diskNames[diskKey] || diskKey.replace('/nvme/', 'NVMe #').replace('/hdd/', 'HDD #').replace('/ssd/', 'SSD #').replace('/disk/', 'Disk #');
     results.push(data);
   }
 
   if (results.length === 0) {
-    return { name: '', readSpeed: '0 KB/s', writeSpeed: '0 KB/s', temperature: 0, load: 0, used: 0, total: 0 };
+    return { readSpeed: '0 KB/s', writeSpeed: '0 KB/s', temperature: '--', used: '--' };
   }
 
-  // 选总速度最大的磁盘，切换后至少保持 3 秒
-  results.sort((a, b) => b._totalSpeed - a._totalSpeed);
-  const fastest = results[0];
-  const now = Date.now();
+  // --- 聚合读写速度 ---
+  // 解析每个磁盘的速度值和单位
+  const readValues = results.map(d => parseSpeedAndUnit(d.readSpeed));
+  const writeValues = results.map(d => parseSpeedAndUnit(d.writeSpeed));
 
-  if (!currentDiskKey) {
-    currentDiskKey = fastest.key;
-    lastSwitchTime = now;
-  } else if (fastest.key !== currentDiskKey && (now - lastSwitchTime) >= MIN_HOLD_MS) {
-    currentDiskKey = fastest.key;
-    lastSwitchTime = now;
-  } else {
-    const current = results.find(r => r.key === currentDiskKey);
-    if (current) return current;
-    // 当前磁盘不存在了，直接切换
-    currentDiskKey = fastest.key;
-    lastSwitchTime = now;
-  }
+  const readSpeed = aggregateByUnit(readValues);
+  const writeSpeed = aggregateByUnit(writeValues);
 
-  return fastest;
+  // --- 温度：展示全部磁盘，用 / 分割 ---
+  const temps = results
+    .filter(d => d.temperature > 0)
+    .map(d => `${d.temperature}℃`);
+  const temperature = temps.length > 0 ? temps.join(' / ') : '--';
+
+  // --- 已用空间：展示全部磁盘的百分比，用 / 分割 ---
+  const usedPercents = results
+    .filter(d => d.total > 0 && d.used >= 0)
+    .map(d => {
+      const pct = Math.round((d.used / d.total) * 100);
+      return `${pct}%`;
+    });
+  const used = usedPercents.length > 0 ? usedPercents.join(' / ') : '--';
+
+  return { readSpeed, writeSpeed, temperature, used };
 }
 
 /**
