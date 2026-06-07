@@ -8,7 +8,7 @@ function RamCard(
         data = {},
     }
 ) {
-    const { load = 0, clock = 0, free = 0, used = 0 } = data;
+    const { load = 0, free = 0, used = 0, total = 0 } = data;
     const intl = useIntl();
 
     return (
@@ -23,8 +23,8 @@ function RamCard(
                     <span>{load}%</span>
                 </div>
                 <div className="small-item">
-                    <span>{intl('clock')}</span>
-                    <span>{clock} MHz</span>
+                    <span>{intl('total')}</span>
+                    <span>{total} GB</span>
                 </div>
                 <div className="small-item">
                     <span>{intl('used')}</span>

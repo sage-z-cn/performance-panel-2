@@ -28,16 +28,16 @@
       "host": {
         "index": 1,
         "order": 101,
-        "text": "地址（Remote Sensor Host）",
+        "text": "地址（LHM Remote Web Server Host）",
         "type": "textinput",
         "value": "localhost"
       },
       "port": {
         "index": 2,
         "order": 102,
-        "text": "端口（Remote Sensor Port）",
+        "text": "端口（LHM Remote Web Server Port）",
         "type": "textinput",
-        "value": "32100"
+        "value": "8085"
       },
       "themeColor": {
         "index": 3,

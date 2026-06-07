@@ -61,9 +61,9 @@ function NetworkCard(
 
     const format = useMemo(() => (val) => {
         if (val >= 1024) {
-            return (val / 1024).toFixed(2) + ' Mb/s';
+            return (val / 1024).toFixed(2) + ' MB/s';
         }
-        return val.toFixed(1) + ' Kb/s';
+        return val.toFixed(1) + ' KB/s';
     }, []);
 
     const option = {

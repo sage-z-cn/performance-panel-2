@@ -11,7 +11,7 @@ function App() {
     const [config, setConfig] = useState({
         language: 'english',
         host: 'localhost',
-        port: 32100,
+        port: 8085,
         dateSeparator: '.',
         timeSeparator: ':',
         themeColor: '#3ada3a',
