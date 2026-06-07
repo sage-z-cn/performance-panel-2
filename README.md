@@ -2,11 +2,9 @@
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
-> **新版本可用**：使用 [LibreHardwareMonitor](https://github.com/LibreHardwareMonitor/LibreHardwareMonitor) 作为数据来源的新版本已发布，无需额外安装 AIDA64 和 RTSS，安装更方便，数据更稳定。详见新仓库 [performance-panel-2](https://github.com/sage-z-cn/performance-panel-2)。
-
 中文 | [English](./README-EN.md)
 
-此项目为 Wallpaper Engine 的网页壁纸，展示 [AIDA64](https://www.aida64.com/downloads) 和 [Riva Tuner Statistics Server](https://www.guru3d.com/download/rtss-rivatuner-statistics-server-download/) 提供的性能数据，并且可以响应音频，识别当前播放的媒体。
+此项目为 Wallpaper Engine 的网页壁纸，展示 [LibreHardwareMonitor](https://github.com/LibreHardwareMonitor/LibreHardwareMonitor) 提供的硬件性能数据，并且可以响应音频，识别当前播放的媒体。
 
 在 Steam 创意工坊中订阅 [Performance Panel](https://steamcommunity.com/sharedfiles/filedetails/?id=3465632551) .
 
@@ -14,28 +12,17 @@
 
 # 使用方法
 
-## 安装 AIDA64 并启用 Remote Sensor
+## 安装 LibreHardwareMonitor 并启用 Remote Web Server
 
-1. 下载并安装 [AIDA64](https://www.aida64.com/downloads)
-2. 运行AIDA64，打开设置，设置开机自启动、最小化和关闭时最小化到任务通知区域，关闭启动时的欢迎画面，当AIDA64启动时最小化到任务通知区域，确保 AIDA64 开机后可以后台运行
-   
-   <img src="./assets/aida64-zh-1.png" alt="">
-
-3. 切换到LCD设置，找到 Remote Sensor，修改 TCP/IP 端口为 32100，勾选启用RemoteSensor LCD支持，应用设置后提示“RemoteSensor Init OK”
-   
-   <img src="./assets/aida64-zh-2.png" alt="">
-
-4. 切换到LCD-LCD项目，下载并导入 [performance-panel-lcd.rslcd](./public/performance-panel-lcd.rslcd) 文件并应用
-   
-   <img src="./assets/aida64-zh-3.png" alt="">
-
-## 安装 Riva Tuner Statistics Server (RTSS)
-
-> Note: 如果不想看帧数的话，可以不用安装 RTSS
-
-1. 下载并安装 [Riva Tuner Statistics Server](https://www.guru3d.com/download/rtss-rivatuner-statistics-server-download/)
-
-2. 运行并勾选 Start With Windows ，点击最小化按钮使其在后台运行
+1. 从 [LibreHardwareMonitor Releases](https://github.com/LibreHardwareMonitor/LibreHardwareMonitor/releases) 下载最新版本的便携版（zip 包）
+2. 解压到一个固定目录（建议不要放在会经常变动的路径）
+3. 运行 `LibreHardwareMonitor.exe`，首次启动会提示是否安装 PawnIO 驱动，选择**是**
+4. 打开 **Options** 菜单，勾选：
+   - `Start Minimized` — 启动时最小化
+   - `Minimize To Tray` — 最小化到系统托盘
+   - `Minimize On Close` — 关闭时最小化
+   - `Run On Windows Startup` — 开机自启动
+5. 打开 **Options → Remote Web Server** 菜单，勾选 `Run`，即可启用 Remote Web Server（默认端口 **8085**）
 
 ## 应用 Wallpaper Engine 壁纸
 
@@ -45,17 +32,11 @@
 
 ### 问：为什么无法显示数据？
 
-> 答：请检查 AIDA64 是否正在后台运行，且开启了 RemoteSensor。如果均检查无误，可以修改 Remote Sensor 端口后，在 Wallpaper Engine 的本壁纸设置中修改端口重试。
+> 答：请检查 LibreHardwareMonitor 是否正在后台运行，且 Remote Web Server 已启用。如果均检查无误，可以在 Wallpaper Engine 的本壁纸设置中修改 Host/端口重试。
 
-### 问: 为什么有的数据显示错误？
+### 问：为什么有的数据显示错误或为 0？
 
-> 答： 不同的电脑中，AIDA64 监控的项目会有所不同，需要在 LCD 项目中手动选择对应的监控项进行修改。注意在修改的时候，请保持项目的顺序不变，不要新建、删除、移动项目。
-
-<img src="./assets/aida64-zh-4.png" />
-
-### 问：为什么 FPS 未显示？
-
-> 答：请检查 Riva Tuner Statistics Server 是否已安装且正在运行。如果确认 RTSS 正在运行，打开游戏且游戏处于前台运行后仍未显示 FPS 数据的话，则可能是 RTSS 不支持该游戏。
+> 答：不同电脑中 LibreHardwareMonitor 的传感器 SensorId 不同。需要编辑 `src/main/lhm-parser.js` 中的 `SENSOR_ID_MAP`，根据自己硬件的 SensorId 修改映射关系。修改后需要重新部署。
 
 ### 问：为什么未识别到当前正在播放的媒体？
 

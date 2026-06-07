@@ -4,7 +4,7 @@
 
 [中文](./README.md) | English
 
-This project is a web wallpaper for Wallpaper Engine that displays performance data provided by [AIDA64](https://www.aida64.com/downloads) and [Riva Tuner Statistics Server](https://www.guru3d.com/download/rtss-rivatuner-statistics-server-download/), and can respond to audio, recognizing the currently playing media.
+This project is a web wallpaper for Wallpaper Engine that displays hardware performance data provided by [LibreHardwareMonitor](https://github.com/LibreHardwareMonitor/LibreHardwareMonitor), and can respond to audio, recognizing the currently playing media.
 
 Subscribe [Performance Panel](https://steamcommunity.com/sharedfiles/filedetails/?id=3465632551) in Wallpaper Engine's Steam Workshop.
 
@@ -12,30 +12,17 @@ Subscribe [Performance Panel](https://steamcommunity.com/sharedfiles/filedetails
 
 # Usage Guide
 
-## Install AIDA64 and Enable Remote Sensor
+## Install LibreHardwareMonitor and Enable Remote Web Server
 
-1. Download and install [AIDA64](https://www.aida64.com/downloads)
-
-2. Run AIDA64, open preferences, configure load AIDA64 at Windows startup, minimize to system tray when closing, when AIDA64 starts Hide main window(minimize to System Tray), ensure AIDA64 runs in background after system boot
-   
-   <img src="./assets/aida64-eng-1.png" alt="">
-   
-3. Navigate to LCD settings, find Remote Sensor, change TCP/IP port to 32100, check "Enable RemoteSensor LCD support". After applying settings, you should see "RemoteSensor Init OK" prompt
-
-   <img src="./assets/aida64-eng-2.png" alt="">
-
-
-4. Go to LCD items, import [performance-panel-lcd-english.rslcd](./public/performance-panel-lcd-english.rslcd) file and apply
-   
-   <img src="./assets/aida64-eng-3.png" alt="">
-
-## Install Riva Tuner Statistics Server (RTSS)
-
-> Note: If you don't want to view FPS, you can skip the installation of RTSS.
-
-1. Download and install [Riva Tuner Statistics Server](https://www.guru3d.com/download/rtss-rivatuner-statistics-server-download/)
- 
-2. Run RTSS and check "Start With Windows", then minimize it to run in background
+1. Download the latest portable version (zip) from [LibreHardwareMonitor Releases](https://github.com/LibreHardwareMonitor/LibreHardwareMonitor/releases)
+2. Extract to a fixed directory (avoid paths that may change frequently)
+3. Run `LibreHardwareMonitor.exe`. If prompted to install the PawnIO driver on first launch, choose **Yes**
+4. Open the **Options** menu and check:
+   - `Start Minimized`
+   - `Minimize To Tray`
+   - `Minimize On Close`
+   - `Run On Windows Startup`
+5. Open **Options → Remote Web Server** menu and check `Run` to enable Remote Web Server (default port **8085**)
 
 ## Apply Wallpaper Engine Wallpaper
 
@@ -45,18 +32,11 @@ Subscribe to [Performance Panel](https://steamcommunity.com/sharedfiles/filedeta
 
 ### Q: Why the data do not display?
 
-> A: Please check if AIDA64 is running in the background and RemoteSensor is enabled. If everything checks out, you can modify the Remote Sensor port and then update the port in the Wallpaper Engine wallpaper settings to retry.
+> A: Please check if LibreHardwareMonitor is running in the background and Remote Web Server is enabled. If everything checks out, you can modify the Host/Port in the Wallpaper Engine wallpaper settings to retry.
 
-### Q: Why are some data displays incorrect?
+### Q: Why are some data displays incorrect or showing 0?
 
-> A: Different computers may have varying LCD items in AIDA64. You'll need to manually select and modify the corresponding monitoring entries in the LCD settings. 
-> Note: When editing, maintain their original order please, do not add, delete, or rearrange LCD items.
-
-<img src="./assets/aida64-eng-4.png" />
-
-### Q: Why is FPS not showing?
-
-> A: Please verify if Riva Tuner Statistics Server is running. If RTSS is confirmed running but still no FPS data appears when gaming, the game might not be supported by RTSS
+> A: Different computers have different LibreHardwareMonitor SensorId values. You need to edit `src/main/lhm-parser.js` and modify the `SENSOR_ID_MAP` to match your hardware's SensorId. Then redeploy the wallpaper.
 
 ### Q: Why isn't currently playing media detected?
 

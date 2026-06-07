@@ -8,10 +8,10 @@ import {parseLHMData} from "./lhm-parser.js";
 import ChipCard from "./cards/ChipCard/index.jsx";
 import RamCard from "./cards/RamCard/index.jsx";
 import NetworkCard from "./cards/NetworkCard/index.jsx";
+import DiskCard from "./cards/DiskCard/index.jsx";
 import AudioCard from "./cards/AudioCard/index.jsx";
-import GoldPriceCard from "./cards/GoldPriceCard/index.jsx";
 
-const POLL_INTERVAL = 1000; // LHM 轮询间隔 (ms)，与原来 SSE 推送频率一致
+const POLL_INTERVAL = 1000; // LHM 轮询间隔 (ms)
 
 function Main() {
     const {host, port} = useConfig();
@@ -73,7 +73,7 @@ function Main() {
                             <NetworkCard data={performance.network}/>
                         </Col>
                         <Col span={4}>
-                            <GoldPriceCard/>
+                            <DiskCard data={performance.disk}/>
                         </Col>
                         <Col span={12}>
                             <ChipCard type="GPU" data={{...performance.gpu, ...performance.display}}/>

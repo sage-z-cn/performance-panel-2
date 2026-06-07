@@ -20,19 +20,19 @@ function RamCard(
             <div className="card-body">
                 <div className="small-item">
                     <span>{intl('load')}</span>
-                    <span>{load}%</span>
-                </div>
-                <div className="small-item">
-                    <span>{intl('total')}</span>
-                    <span>{total} GB</span>
+                    <span>{load.toFixed(1)}%</span>
                 </div>
                 <div className="small-item">
                     <span>{intl('used')}</span>
-                    <span>{used} GB</span>
+                    <span>{used.toFixed(1)} GB</span>
                 </div>
                 <div className="small-item">
                     <span>{intl('free')}</span>
-                    <span>{free} GB</span>
+                    <span>{free.toFixed(1)} GB</span>
+                </div>
+                <div className="small-item">
+                    <span>{intl('total')}</span>
+                    <span>{total.toFixed(1)} GB</span>
                 </div>
             </div>
         </div>

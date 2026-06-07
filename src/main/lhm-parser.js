@@ -1,7 +1,7 @@
 /**
  * LibreHardwareMonitor 数据解析器
  *
- * 将 LHM /data.json 返回的树形 JSON 解析为与 AIDA64 兼容的 performance 对象。
+ * 将 LHM /data.json 返回的树形 JSON 解析为 performance 对象。
  * 优先使用精确 SensorId 匹配，失败时回退到 SensorId 前缀 + Type + Text 模糊匹配。
  *
  * 适配你的机器：修改 SENSOR_ID_MAP 中的 SensorId 索引号即可。
@@ -12,27 +12,26 @@
 // ============================================================
 
 const SENSOR_ID_MAP = {
-  // --- CPU (Intel Core i5-12600KF: /intelcpu/0) ---
-  'cpu.load':        '/intelcpu/0/load/0',
-  'cpu.temperature': '/intelcpu/0/temperature/0',
-  'cpu.clock':       '/intelcpu/0/clock/1',        // P-Core #1, clock/0 是 Bus Speed
-  'cpu.voltage':     '/intelcpu/0/voltage/0',
-  'cpu.power':       '/intelcpu/0/power/0',
-  'cpu.fan':         '/lpc/nct6687d/0/fan/0',       // 主板 CPU 风扇
+  // --- CPU ---
+  'cpu.load':        ['/intelcpu/0/load/0',        '/amdcpu/0/load/0'],
+  'cpu.temperature': ['/intelcpu/0/temperature/0', '/amdcpu/0/temperature/0'],
+  'cpu.clock':       ['/intelcpu/0/clock/1',       '/amdcpu/0/clock/0'],       // Intel P-Core #1, AMD Core #0
+  'cpu.voltage':     ['/intelcpu/0/voltage/0',     '/amdcpu/0/voltage/0'],
+  'cpu.power':       ['/intelcpu/0/power/0',       '/amdcpu/0/power/0'],
+  'cpu.fan':         ['/lpc/nct6687d/0/fan/0'],                                  // 主板风扇，无 AMD 通用映射
 
-  // --- GPU (NVIDIA RTX 4060: /gpu-nvidia/0) ---
-  'gpu.load':        '/gpu-nvidia/0/load/0',
-  'gpu.temperature': '/gpu-nvidia/0/temperature/0',
-  'gpu.clock':       '/gpu-nvidia/0/clock/0',
-  'gpu.voltage':     '/gpu-nvidia/0/voltage/0',
-  'gpu.fan':         '/gpu-nvidia/0/fan/0',
+  // --- GPU ---
+  'gpu.load':        ['/gpu-nvidia/0/load/0',      '/gpu-amd/0/load/0'],
+  'gpu.temperature': ['/gpu-nvidia/0/temperature/0', '/gpu-amd/0/temperature/0'],
+  'gpu.clock':       ['/gpu-nvidia/0/clock/0',     '/gpu-amd/0/clock/0'],
+  'gpu.voltage':     ['/gpu-nvidia/0/voltage/0',   '/gpu-amd/0/voltage/0'],
+  'gpu.fan':         ['/gpu-nvidia/0/fan/0',       '/gpu-amd/0/fan/0'],
 
   // --- VRAM (来自 GPU) ---
-  'videoRam.load':   '/gpu-nvidia/0/load/3',          // GPU Memory Load
-  'videoRam.used':   '/gpu-nvidia/0/smalldata/1',     // GPU Memory Used (MB, 后续转为 GB)
-  'videoRam.free':   '/gpu-nvidia/0/smalldata/0',     // GPU Memory Free (MB, 后续转为 GB)
-  'videoRam.total':  '/gpu-nvidia/0/smalldata/2',     // GPU Memory Total (MB, 后续转为 GB)
-  // 注意：ram.clock 和 videoRam.clock 无可靠 LHM 传感器，已用 total 替代
+  'videoRam.load':   ['/gpu-nvidia/0/load/3',      '/gpu-amd/0/load/3'],
+  'videoRam.used':   ['/gpu-nvidia/0/smalldata/1', '/gpu-amd/0/smalldata/1'],   // MB，后续转为 GB
+  'videoRam.free':   ['/gpu-nvidia/0/smalldata/0', '/gpu-amd/0/smalldata/0'],
+  'videoRam.total':  ['/gpu-nvidia/0/smalldata/2', '/gpu-amd/0/smalldata/2'],
 };
 
 // ============================================================
@@ -41,8 +40,9 @@ const SENSOR_ID_MAP = {
 // ============================================================
 
 const FUZZY_RULES = [
-  // --- GPU Power（部分显卡不暴露）---
+  // --- GPU Power（部分显卡不暴露，兼容 NVIDIA 和 AMD）---
   { field: 'gpu.power',   prefix: '/gpu-nvidia/', type: 'Power' },
+  { field: 'gpu.power',   prefix: '/gpu-amd/',     type: 'Power' },
 
   // --- RAM（前缀 /ram/ 精确排除 /vram/）---
   { field: 'ram.load',    prefix: '/ram/', type: 'Load', text: 'Memory' },
@@ -53,6 +53,24 @@ const FUZZY_RULES = [
 // ============================================================
 // 辅助函数
 // ============================================================
+
+/**
+ * 从 JSON 树中提取硬件名称（按 HardwareId 前缀匹配）
+ */
+function getHardwareName(jsonData, prefix) {
+  function walk(node) {
+    if (!node) return null;
+    if (node.HardwareId && node.HardwareId.startsWith(prefix)) {
+      return node.Text;
+    }
+    for (const child of node.Children || []) {
+      const result = walk(child);
+      if (result) return result;
+    }
+    return null;
+  }
+  return walk(jsonData) || '';
+}
 
 /**
  * 从 LHM 值字符串中提取数字（如 "52.0 °C" → 52.0）
@@ -139,29 +157,216 @@ function isPhysicalNic(name) {
 }
 
 function aggregateNetwork(sensorMap, nicNames) {
-  let download = 0;
-  let upload = 0;
+  // 按 GUID 分组，收集每个物理网卡的 Throughput 传感器
+  const nics = {};
 
   for (const node of Object.values(sensorMap)) {
     if (node.Type !== 'Throughput') continue;
     if (!node.SensorId || !node.SensorId.includes('/nic/')) continue;
 
-    // 从 SensorId 提取 GUID，匹配网卡名称
     const parts = node.SensorId.split('/');
-    const guid = parts[2];  // /nic/{GUID}/throughput/X
+    const guid = parts[2];
     if (!isPhysicalNic(nicNames[guid])) continue;
 
+    if (!nics[guid]) nics[guid] = { name: nicNames[guid] || guid, download: '0 KB/s', downloadNum: 0, upload: '0 KB/s', uploadNum: 0 };
+
     const text = (node.Text || '').toLowerCase();
-    const val = parseValue(node.Value);  // Throughput 的 Value 已是 KB/s，RawValue 是 B/s
+    const val = node.Value || '';
+    // 归一化到 KB/s：LHM 网速单位可能是 "KB/s" 或 "MB/s"
+    let num = parseFloat(val) || 0;
+    if (val.toLowerCase().includes('mb/s')) num *= 1000;
 
     if (text.includes('upload')) {
-      upload += val;
+      nics[guid].upload = val;
+      nics[guid].uploadNum = num;
     } else if (text.includes('download')) {
-      download += val;
+      nics[guid].download = val;
+      nics[guid].downloadNum = num;
     }
   }
 
-  return { download, upload };
+  // 选总速度最大的物理网卡
+  let best = { download: '0 KB/s', upload: '0 KB/s' };
+  let bestTotal = 0;
+  for (const nic of Object.values(nics)) {
+    const total = nic.downloadNum + nic.uploadNum;
+    if (total > bestTotal) {
+      bestTotal = total;
+      best = { download: nic.download, upload: nic.upload };
+    }
+  }
+
+  return best;
+}
+
+// ============================================================
+// 磁盘数据聚合（立即选中总速度最大的磁盘，但切换后至少保持 3 秒）
+// ============================================================
+
+let currentDiskKey = null;
+let lastSwitchTime = 0;
+const MIN_HOLD_MS = 3000;
+
+/**
+ * 从 JSON 树中获取磁盘前缀 → 型号名称 的映射
+ * 通过 HardwareId 精确匹配磁盘节点（如 /nvme/2, /hdd/0）
+ */
+function getDiskNames(jsonData) {
+  const names = {};
+  const DISK_PREFIXES = ['/nvme/', '/hdd/', '/ssd/', '/disk/', '/storage/'];
+
+  function walk(node) {
+    if (!node) return;
+    if (node.HardwareId && node.Text) {
+      for (const p of DISK_PREFIXES) {
+        if (node.HardwareId.startsWith(p)) {
+          // HardwareId 格式：/nvme/2, /hdd/0 等
+          names[node.HardwareId] = node.Text;
+          break;
+        }
+      }
+    }
+    if (node.Children) {
+      for (const child of node.Children) walk(child);
+    }
+  }
+  walk(jsonData);
+  return names;
+}
+
+/**
+ * 按 SensorId 前缀将磁盘传感器分组
+ * 磁盘 SensorId 格式：/nvme/N/type/idx 或 /hdd/N/type/idx
+ */
+function aggregateDisks(sensorMap, jsonData) {
+  const diskNames = getDiskNames(jsonData);
+  const DISK_PREFIXES = ['/nvme/', '/hdd/', '/ssd/', '/disk/', '/storage/'];
+  // 存储：{ diskKey: { name, sensors: [] } }
+  const disks = {};
+
+  for (const node of Object.values(sensorMap)) {
+    if (!node.SensorId) continue;
+
+    // 匹配磁盘前缀，提取磁盘标识
+    let diskKey = null;
+    for (const prefix of DISK_PREFIXES) {
+      if (node.SensorId.startsWith(prefix)) {
+        // 提取 /nvme/2/... → "nvme-2"
+        const rest = node.SensorId.substring(prefix.length);
+        const idx = rest.indexOf('/');
+        const diskId = idx > 0 ? rest.substring(0, idx) : rest;
+        diskKey = prefix + diskId;
+        break;
+      }
+    }
+    if (!diskKey) continue;
+
+    if (!disks[diskKey]) {
+      disks[diskKey] = { name: diskKey.replace('/', ' ').trim(), sensors: [] };
+    }
+    disks[diskKey].sensors.push(node);
+  }
+
+  const results = [];
+  for (const diskKey of Object.keys(disks)) {
+    const data = parseDiskData(disks[diskKey].sensors);
+    data.key = diskKey;
+    // 改写 name 为更友好的磁盘名称
+    data.name = diskNames[diskKey] || diskKey.replace('/nvme/', 'NVMe #').replace('/hdd/', 'HDD #').replace('/ssd/', 'SSD #').replace('/disk/', 'Disk #');
+    results.push(data);
+  }
+
+  if (results.length === 0) {
+    return { name: '', readSpeed: '0 KB/s', writeSpeed: '0 KB/s', temperature: 0, load: 0, used: 0, total: 0 };
+  }
+
+  // 选总速度最大的磁盘，切换后至少保持 3 秒
+  results.sort((a, b) => b._totalSpeed - a._totalSpeed);
+  const fastest = results[0];
+  const now = Date.now();
+
+  if (!currentDiskKey) {
+    currentDiskKey = fastest.key;
+    lastSwitchTime = now;
+  } else if (fastest.key !== currentDiskKey && (now - lastSwitchTime) >= MIN_HOLD_MS) {
+    currentDiskKey = fastest.key;
+    lastSwitchTime = now;
+  } else {
+    const current = results.find(r => r.key === currentDiskKey);
+    if (current) return current;
+    // 当前磁盘不存在了，直接切换
+    currentDiskKey = fastest.key;
+    lastSwitchTime = now;
+  }
+
+  return fastest;
+}
+
+/**
+ * 从单个磁盘的传感器列表中提取数据
+ */
+function parseDiskData(diskSensors) {
+  let readSpeed = '';
+  let writeSpeed = '';
+  let temperature = 0;
+  let load = 0;
+  let used = 0;
+  let total = 0;
+
+  for (const node of diskSensors) {
+    const text = (node.Text || '').toLowerCase();
+    const type = node.Type;
+
+    if (type === 'Throughput') {
+      // LHM 的 Throughput.Value 自带单位，直接用
+      if (text.includes('read')) {
+        readSpeed = node.Value || '';
+      } else if (text.includes('write')) {
+        writeSpeed = node.Value || '';
+      }
+    } else if (type === 'Temperature') {
+      // 跳过警告/临界温度，取实际的 Composite 温度或第一个非警告值
+      if (text.includes('warning') || text.includes('critical')) continue;
+      if (temperature === 0 || text.includes('composite')) {
+        temperature = parseValue(node.RawValue);
+      }
+    } else if (type === 'Load') {
+      // 只取 Used Space，避免 Read/Write Activity 覆盖
+      if (text.includes('used space') || text.includes('已用')) {
+        load = parseValue(node.RawValue);
+      }
+    } else if (type === 'Data') {
+      if (text.includes('used') || text.includes('已用')) {
+        used = parseValue(node.RawValue);
+      } else if (text.includes('total') || text.includes('总')) {
+        total = parseValue(node.RawValue);
+      } else if (text.includes('available') || text.includes('free') || text.includes('可用') || text.includes('空闲')) {
+        // free 保留但不使用
+      }
+    }
+  }
+
+  // 如果有 total 但没有 used，但有 load 值，尝试计算 used
+  if (total > 0 && used === 0 && load > 0) {
+    used = +(total * load / 100).toFixed(1);
+  }
+
+  // 转换 GB（假设 Data 类型的值是 GB 单位；如果值很大可能是 MB 单位）
+  if (total > 20000) {
+    // 可能是 MB 单位，转换为 GB
+    total = +(total / 1024).toFixed(2);
+    used = +(used / 1024).toFixed(2);
+  }
+
+  return {
+    readSpeed: readSpeed || '0 KB/s',
+    writeSpeed: writeSpeed || '0 KB/s',
+    _totalSpeed: (parseFloat(readSpeed) || 0) + (parseFloat(writeSpeed) || 0),  // 排序用
+    temperature: +temperature.toFixed(1),
+    load: +load.toFixed(1),
+    used: +used.toFixed(1),
+    total: +total.toFixed(1),
+  };
 }
 
 // ============================================================
@@ -169,7 +374,7 @@ function aggregateNetwork(sensorMap, nicNames) {
 // ============================================================
 
 /**
- * 将 LHM JSON 树解析为与 AIDA64 兼容的 performance 对象
+ * 将 LHM JSON 树解析为 performance 对象
  *
  * @param {object} jsonData - fetchLHMData() 返回的 JSON 树
  * @returns {object} performance 对象
@@ -179,14 +384,16 @@ export function parseLHMData(jsonData) {
   const nicNames = getNicNames(jsonData);
 
   /**
-   * 三级查找：精确 SensorId → 模糊匹配 → 兜底 0
+   * 三级查找：精确 SensorId（逐个尝试）→ 模糊匹配 → 兜底 0
    */
   function resolve(field, fuzzyRule) {
-    // 1. 精确 SensorId 匹配
-    const sensorId = SENSOR_ID_MAP[field];
-    if (sensorId) {
-      const val = getBySensorId(sensorMap, sensorId);
-      if (val != null) return val;
+    // 1. 精确 SensorId 匹配（依次尝试 Intel/NVIDIA/AMD 等）
+    const sensorIds = SENSOR_ID_MAP[field];
+    if (sensorIds) {
+      for (const sid of sensorIds) {
+        const val = getBySensorId(sensorMap, sid);
+        if (val != null) return val;
+      }
     }
     // 2. 模糊匹配（SensorId 前缀 + Type + Text）
     if (fuzzyRule) {
@@ -205,6 +412,10 @@ export function parseLHMData(jsonData) {
 
   const timestamp = Date.now();
 
+  // 提取硬件名称
+  const cpuName = getHardwareName(jsonData, '/intelcpu/') || getHardwareName(jsonData, '/amdcpu/');
+  const gpuName = getHardwareName(jsonData, '/gpu-nvidia/') || getHardwareName(jsonData, '/gpu-amd/');
+
   // VRAM used/free/total 在 LHM 中是 SmallData，单位为 MB，需转为 GB
   const vramUsedMB = resolve('videoRam.used', null);
   const vramFreeMB = resolve('videoRam.free', null);
@@ -212,6 +423,7 @@ export function parseLHMData(jsonData) {
 
   const performance = {
     cpu: {
+      name:        cpuName,
       load:        resolve('cpu.load'),
       temperature: resolve('cpu.temperature'),
       clock:       resolve('cpu.clock'),
@@ -220,6 +432,7 @@ export function parseLHMData(jsonData) {
       fan:         resolve('cpu.fan'),
     },
     gpu: {
+      name:        gpuName,
       load:        resolve('gpu.load'),
       temperature: resolve('gpu.temperature'),
       clock:       resolve('gpu.clock'),
@@ -241,10 +454,10 @@ export function parseLHMData(jsonData) {
     },
     display: {
       timestamp,
-      fps: 0,  // LHM 不提供 FPS
     },
     volume: 0,
     network: aggregateNetwork(sensorMap, nicNames),
+    disk: aggregateDisks(sensorMap, jsonData),
   };
 
   return performance;

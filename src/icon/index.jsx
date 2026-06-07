@@ -129,14 +129,14 @@ const volume = () => (
     </svg>
 )
 
-export const VolumeIcon = (props) => (<Icon component={volume} {...props} />);
-
-const gold = () => (
+const disk = () => (
     <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"
          viewBox="0 0 24 24">
         <path fill="currentColor"
-              d="m1 22l1.5-5h7l1.5 5zm12 0l1.5-5h7l1.5 5zm-7-7l1.5-5h7l1.5 5zm17-8.95l-3.86 1.09L18.05 11l-1.09-3.86l-3.86-1.09l3.86-1.09l1.09-3.86l1.09 3.86z"/>
+              d="M6 2h12a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2m6 2a6 6 0 0 0-6 6c0 3.31 2.69 6 6.1 6l-.88-2.23a1.01 1.01 0 0 1 .37-1.37l.86-.5a1.01 1.01 0 0 1 1.37.37l1.92 2.42A5.98 5.98 0 0 0 18 10a6 6 0 0 0-6-6m0 5a1 1 0 0 1 1 1a1 1 0 0 1-1 1a1 1 0 0 1-1-1a1 1 0 0 1 1-1m-5 9a1 1 0 0 1-1-1a1 1 0 0 1 1-1a1 1 0 0 1 1 1a1 1 0 0 1-1 1m5.09-4.73L18 18.89l-2.35-2.34l-1.27 1.27c-.29.29-.77.29-1.06 0l-2.59-2.59a.754.754 0 0 1 0-1.06l.53-.53c.29-.29.77-.29 1.06 0l1.34 1.34l1.27-1.27l.06-.06a.75.75 0 0 1 1.06 0l.65.65c.29.29.29.77 0 1.06"/>
     </svg>
-)
+);
 
-export const GoldIcon = (props) => (<Icon component={gold} {...props} />);
+export const DiskIcon = (props) => (<Icon component={disk} {...props} />);
+
+export const VolumeIcon = (props) => (<Icon component={volume} {...props} />);

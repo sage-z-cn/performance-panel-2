@@ -3,12 +3,12 @@ import React, {useMemo} from "react";
 
 const translators = {
     english: {
-        usage: (<span>AIDA64 LCD Remote Sensor not available.
+        usage: (<span>LibreHardwareMonitor Remote Web Server is not available.
             Please visit&nbsp;
-            <a href="https://github.com/sage9731/performance-panel" target="_blank">
-                https://github.com/sage9731/performance-panel
+            <a href="https://github.com/sage9731/performance-panel-2" target="_blank">
+                https://github.com/sage9731/performance-panel-2
             </a>&nbsp;
-            and see how it works.
+            and see how to set it up.
         </span>),
         temperature: 'Temperature',
         clock: 'Clock',
@@ -24,25 +24,18 @@ const translators = {
         ram: 'RAM',
         vram: 'VRAM',
         network: 'Network',
-        fps: 'FPS',
         audio: 'Audio',
         volume: 'Volume',
-        uptime: 'Uptime',
-        goldPrice: 'Gold Price',
-        updateTime: 'Update Time',
-        buyPrice: 'Buy Price',
-        sellPrice: 'Sell Price',
-        highPrice: 'High Price',
-        lowPrice: 'Low Price',
-        domesticGold: 'CN',
-        nyGold: 'NYC',
-        londonGold: 'LON',
+        readSpeed: 'Read',
+        writeSpeed: 'Write',
+        disk: 'Disk',
+        data: 'Data',
     },
     chinese: {
-        usage: (<span>AIDA64 LCD Remote Sensor 不可用。
+        usage: (<span>LibreHardwareMonitor 的 Remote Web Server 不可用。
             请访问&nbsp;
-            <a href="https://github.com/sage9731/performance-panel" target="_blank">
-                https://github.com/sage9731/performance-panel
+            <a href="https://github.com/sage9731/performance-panel-2" target="_blank">
+                https://github.com/sage9731/performance-panel-2
             </a>&nbsp;
             并查看安装使用说明。
         </span>),
@@ -60,19 +53,12 @@ const translators = {
         ram: '内存',
         vram: '显存',
         network: '网络',
-        fps: '帧数',
         audio: '音频',
         volume: '音量',
-        uptime: '已运行',
-        goldPrice: '黄金价格',
-        updateTime: '更新时间',
-        buyPrice: '买入价格',
-        sellPrice: '卖出价格',
-        highPrice: '最高价',
-        lowPrice: '最低价',
-        domesticGold: '国内金',
-        nyGold: '纽约金',
-        londonGold: '伦敦金',
+        readSpeed: '读取',
+        writeSpeed: '写入',
+        disk: '磁盘',
+        data: '数据',
     }
 };
 

@@ -1,4 +1,4 @@
-import React, {useEffect, useMemo, useState} from 'react';
+import React, {useEffect, useState} from 'react';
 import ReactEChartsCore from 'echarts-for-react/lib/core';
 import * as echarts from 'echarts/core';
 import {BarChart} from 'echarts/charts';
@@ -31,26 +31,27 @@ function NetworkCard(
 ) {
     const { themeColor } = useConfig();
     const intl = useIntl();
-    const {download = 0, upload = 0} = data;
+    const download = data.download || '0 KB/s';
+    const upload = data.upload || '0 KB/s';
+    const toKB = (s) => {
+        const num = parseFloat(s) || 0;
+        return s.toLowerCase().includes('mb/s') ? num * 1000 : num;
+    };
+    const uploadVal = toKB(upload);
+    const downloadVal = toKB(download);
     
     const [dynamicMax, setDynamicMax] = useState(1024);
     const [source, setSource] = useState(Array.from({length: n}, (_, i) => [i, 0, 0]))
 
     useEffect(() => {
-        let {download, upload} = data;
-        if (download < 1) {
-            download = 0;
-        }
-
-        if (upload < 1) {
-            upload = 0;
-        }
+        const up = uploadVal < 1 ? 0 : uploadVal;
+        const down = downloadVal < 1 ? 0 : downloadVal;
 
         setSource(prev => {
             const [i] = prev.shift();
-            prev.push([i + n, upload, download]);
+            prev.push([i + n, up, down]);
 
-            let max = Math.max(upload, download)
+            let max = Math.max(up, down)
             for(let j = prev.length -1; j > prev.length - 15; j--) {
                 max = Math.max(max, prev[j][1], prev[j][2])
             }
@@ -58,13 +59,6 @@ function NetworkCard(
             return prev;
         })
     }, [data, n]);
-
-    const format = useMemo(() => (val) => {
-        if (val >= 1024) {
-            return (val / 1024).toFixed(2) + ' MB/s';
-        }
-        return val.toFixed(1) + ' KB/s';
-    }, []);
 
     const option = {
         grid: {
@@ -122,11 +116,11 @@ function NetworkCard(
             <div className="card-body">
                 <div className="small-item">
                     <span>{intl('upload')}</span>
-                    <span>{format(upload)}</span>
+                    <span>{upload}</span>
                 </div>
                 <div className="small-item">
                     <span>{intl('download')}</span>
-                    <span>{format(download)}</span>
+                    <span>{download}</span>
                 </div>
                 <ReactEChartsCore
                     echarts={echarts}

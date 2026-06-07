@@ -1,11 +1,11 @@
 # AGENTS.md — Performance Panel
 
-Wallpaper Engine 网页壁纸，展示 LibreHardwareMonitor 硬件性能数据、音频波形、SMTC 媒体信息、实时金价。
+Wallpaper Engine 网页壁纸，展示 LibreHardwareMonitor 硬件性能数据、音频波形、SMTC 媒体信息。
 
 ## 技术栈
 
 - **React 18**（函数组件 + Hooks）、**Vite 6**、**Ant Design 5**（仅 Row/Col 布局 + @ant-design/icons）、**ECharts 5**（echarts-for-react 按需注册）
-- **ahooks**（useRequest 轮询）、**env-cmd**（部署脚本环境变量注入）
+- **env-cmd**（部署脚本环境变量注入）
 - **纯 JavaScript ESM**，无 TypeScript（`@types/*` 仅供编辑器类型提示，无编译步骤）
 - 风格：每个卡片独立目录 `src/main/cards/CardName/index.jsx`
 
@@ -66,15 +66,13 @@ window.wallpaperRegisterAudioListener(undefined);
 Wallpaper Engine 用户设置 ──→ wallpaperPropertyListener ──→ App.jsx (config state) ──→ ConfigContext ──→ 所有子组件
 LibreHardwareMonitor      ──→ HTTP GET /data.json (轮询) ──→ Main/index.jsx 解析 ──→ performance state ──→ 卡片 props
 WE 音频/媒体监听器          ──→ AudioCard 直接注册          ──→ AudioCard 内部 state
-huilvbiao.com (金价)       ──→ JSONP (动态 <script>)       ──→ GoldPriceCard useRequest 轮询
-xwteam.cn (汇率)          ──→ fetch()                     ──→ GoldPriceCard useRequest 轮询
 ```
 
-**关键变更**：本项目已从 AIDA64 Remote Sensor (SSE) 迁移到 **LibreHardwareMonitor (LHM) Remote Web Server**。不再使用 SSE/EventSource，改用 HTTP 轮询（`fetch` + `setInterval`，1s 间隔）。
+**关键变更**：本项目数据源为 **LibreHardwareMonitor (LHM) Remote Web Server**，通过 HTTP 轮询（`fetch` + `setInterval`，1s 间隔）获取数据。
 
 ### LHM 数据格式
 
-LHM Remote Web Server 默认端口 **8085**（非 AIDA64 的 32100），在 GUI 的 Options → Remote Web Server 中启用。
+LHM Remote Web Server 默认端口 **8085**，在 GUI 的 Options → Remote Web Server 中启用。
 
 数据端点 `GET /data.json` 返回树形 JSON，每个传感器节点结构：
 ```json
@@ -87,7 +85,7 @@ LHM Remote Web Server 默认端口 **8085**（非 AIDA64 的 32100），在 GUI 
 }
 ```
 
-`lhm-parser.js` 将树形 JSON 解析为与旧 AIDA64 兼容的 `performance` 对象，解析策略分三级：
+`lhm-parser.js` 将树形 JSON 解析为 `performance` 对象，解析策略分三级：
 1. 精确 `SensorId` 匹配（通过 `SENSOR_ID_MAP`）
 2. `SensorId` 前缀 + Type + Text 模糊匹配（通过 `FUZZY_RULES`）
 3. 兜底返回 `0`
@@ -102,7 +100,7 @@ App (ConfigContext.Provider)
         ├── Col span=12: ChipCard CPU
         ├── Col span=4:  RamCard RAM
         ├── Col span=4:  NetworkCard
-        ├── Col span=4:  GoldPriceCard
+        ├── Col span=4:  DiskCard
         ├── Col span=12: ChipCard GPU  (合并 gpu + display)
         ├── Col span=4:  RamCard VRAM
         └── Col span=8:  AudioCard
@@ -120,7 +118,8 @@ App (ConfigContext.Provider)
   videoRam: { load, total, free, used },
   display:  { timestamp, fps },     // fps 始终为 0（LHM 不提供 FPS）
   volume:   0,                       // 音量，由 Main 维护但初始为 0
-  network:  { download, upload }     // KB/s，仅汇总有线/Wi-Fi 网卡
+  network:  { download, upload },    // KB/s，仅汇总有线/Wi-Fi 网卡
+  disk:     { readSpeed, writeSpeed, temperature, load, used, total },  // 选速度最大的磁盘
 }
 ```
 
@@ -173,9 +172,6 @@ echarts.use([LineChart, CanvasRenderer, DatasetComponent, GridComponent]);
 ## API 层
 
 - `src/api/lhm.js` — `fetchLHMData(host, port)` 获取 LHM `/data.json`
-- `src/api/index.js` — `getGoldPrice()` (JSONP) 和 `getUSDToCNYRate()` (fetch)
-  - 金价 60s 轮询，汇率 60min 轮询，均 `pollingWhenHidden: true`
-  - 金价显示模式通过 `localStorage` 持久化（`goldPriceDisplayMode`）
 
 ## Hooks
 
@@ -191,7 +187,7 @@ echarts.use([LineChart, CanvasRenderer, DatasetComponent, GridComponent]);
 
 ## 注意事项
 
-- **`dayjs` 和 `axios` 已安装但未使用**——`src/utils/date.js` 用原生 Date，网络调用用原生 fetch + JSONP。不要引入新依赖除非确实需要。
+- **`dayjs` 和 `axios` 已安装但未使用**——`src/utils/date.js` 用原生 Date，网络调用用原生 fetch。不要引入新依赖除非确实需要。
 - **无测试**——项目没有测试框架和测试文件。
 - **无 CI/CD**——无 GitHub Actions 或其他 CI 配置。
 - **License: GPL v3**。
